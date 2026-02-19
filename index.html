@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Assistente Inteligente de Comunicação</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body{
+    margin:0;
+    background:#eef2f7;
+    font-family:"Segoe UI",sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+.container{
+    background:#fff;
+    width:440px;
+    padding:35px;
+    border-radius:18px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.15);
+}
+
+h1{
+    margin:0;
+    font-size:22px;
+    text-align:center;
+    color:#2c3e50;
+}
+
+.subtitle{
+    text-align:center;
+    font-size:14px;
+    color:#6b7a8c;
+    margin-bottom:25px;
+}
+
+label{
+    font-size:14px;
+    font-weight:600;
+}
+
+input,select{
+    width:100%;
+    padding:12px;
+    margin-top:6px;
+    margin-bottom:15px;
+    border-radius:8px;
+    border:1px solid #d7dee7;
+    font-size:14px;
+}
+
+input:focus,select:focus{
+    outline:none;
+    border-color:#4c84ff;
+}
+
+.topico-item{
+    display:flex;
+    gap:6px;
+    margin-bottom:8px;
+}
+
+.remover{
+    background:#ff4d4d;
+    border:none;
+    color:white;
+    border-radius:6px;
+    width:38px;
+    cursor:pointer;
+}
+
+.add{
+    width:100%;
+    background:#edf3ff;
+    border:1px dashed #4c84ff;
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    color:#2b5cff;
+    margin-bottom:20px;
+}
+
+button.submit{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(90deg,#4c84ff,#3461ff);
+    color:white;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+}
+
+button.submit:hover{
+    opacity:.92;
+}
+
+.progress{
+    width:100%;
+    height:8px;
+    background:#e5ecf5;
+    border-radius:10px;
+    margin-top:15px;
+    overflow:hidden;
+    display:none;
+}
+
+.bar{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,#4c84ff,#3461ff);
+    transition:width .3s;
+}
+
+.loader{
+    text-align:center;
+    margin-top:15px;
+    display:none;
+    font-size:14px;
+    color:#4c84ff;
+}
+
+.preview{
+    margin-top:20px;
+    background:#f6f9ff;
+    border:1px solid #dce6ff;
+    padding:15px;
+    border-radius:10px;
+    font-size:14px;
+    display:none;
+}
+
+.preview h3{
+    margin-top:0;
+}
+
+.status{
+    text-align:center;
+    margin-top:10px;
+    font-size:14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Assistente Inteligente</h1>
+<div class="subtitle">Gerador de Comunicação Corporativa</div>
+
+<form id="formIA">
+
+<label>E-mail do solicitante*</label>
+<input type="email" name="email" required>
+
+<label>Tipo de texto*</label>
+<select name="tipo_texto" required>
+<option value="">Selecione</option>
+<option>E-mail interno</option>
+<option>Mensagem WhatsApp corporativo</option>
+<option>Aviso institucional</option>
+<option>Resumo de reunião</option>
+<option>Comunicado de RH</option>
+</select>
+
+<label>Tom da mensagem*</label>
+<select name="tom" required>
+<option value="">Selecione</option>
+<option>Formal</option>
+<option>Neutro</option>
+<option>Amigável</option>
+<option>Humanizado (RH)</option>
+<option>Motivador</option>
+</select>
+
+<label>Tópicos principais*</label>
+
+<div id="topicosContainer">
+<div class="topico-item">
+<input type="text" name="topicos[]" required>
+<button type="button" class="remover">✖</button>
+</div>
+</div>
+
+<button type="button" class="add" id="addTopico">+ Adicionar tópico</button>
+
+<button class="submit">Gerar Texto</button>
+
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="loader" id="loader">Processando IA...</div>
+
+<div class="preview" id="preview">
+<h3>Prévia gerada</h3>
+<div id="previewText"></div>
+<br>
+<button type="button" onclick="enviarEmail()" class="submit">Confirmar e Enviar</button>
+</div>
+
+<div class="status" id="status"></div>
+
+</form>
+</div>
+
+<script>
+
+const container = document.getElementById("topicosContainer");
+
+// adicionar tópico
+document.getElementById("addTopico").onclick=()=>{
+    const div=document.createElement("div");
+    div.className="topico-item";
+    div.innerHTML=`
+    <input type="text" name="topicos[]" required>
+    <button type="button" class="remover">✖</button>`;
+    container.appendChild(div);
+};
+
+// remover
+document.addEventListener("click",e=>{
+    if(e.target.classList.contains("remover")){
+        e.target.parentElement.remove();
+    }
+});
+
+let respostaIA=null;
+
+// submit
+document.getElementById("formIA").addEventListener("submit",async e=>{
+e.preventDefault();
+
+const bar=document.getElementById("bar");
+const progress=document.querySelector(".progress");
+const loader=document.getElementById("loader");
+const status=document.getElementById("status");
+
+progress.style.display="block";
+loader.style.display="block";
+bar.style.width="10%";
+
+const form=new FormData(e.target);
+
+const data={
+email:form.get("email"),
+tipo_texto:form.get("tipo_texto"),
+tom:form.get("tom"),
+topicos:form.getAll("topicos[]")
+};
+
+let fake=10;
+const anim=setInterval(()=>{
+fake+=10;
+bar.style.width=fake+"%";
+if(fake>=90) clearInterval(anim);
+},300);
+
+try{
+
+const res=await fetch("SEU_WEBHOOK_AQUI",{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body:JSON.stringify(data)
+});
+
+const text=await res.text();
+
+clearInterval(anim);
+bar.style.width="100%";
+
+respostaIA=text;
+
+document.getElementById("previewText").innerText=text;
+document.getElementById("preview").style.display="block";
+
+loader.style.display="none";
+status.innerText="Texto gerado. Revise antes de enviar.";
+
+}catch{
+status.innerText="Erro ao gerar texto.";
+loader.style.display="none";
+}
+
+});
+
+// confirmação
+function enviarEmail(){
+document.getElementById("status").innerText="Texto enviado com sucesso!";
+document.getElementById("preview").style.display="none";
+document.querySelector("form").reset();
+}
+
+</script>
+
+</body>
+</html>
